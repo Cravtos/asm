@@ -1,1 +1,1 @@
-Programs written to learn assembler
+Programs written to learn *nasm*.
