@@ -4,7 +4,7 @@ section .data
 	plain_text db "Hello, world!", 0
 	PLAIN_TEXT_LEN equ ($ - plain_text)
 	endl db 0xA
-	KEY equ 3
+	key dd 3
  
 section .bss
 	cipher_text resb PLAIN_TEXT_LEN
@@ -15,21 +15,19 @@ section .text
 _start:
 	push plain_text
 	push cipher_text
-	push KEY
 	call encrypt
-	sub esp, 12
+	sub esp, 8
  
 	push cipher_text
 	push decrypted_text
-	push KEY
 	call decrypt
-	sub esp, 12
+	sub esp, 8
  
 	push cipher_text
 	push decrypted_text
 	push PLAIN_TEXT_LEN
 	call print
-	sub esp, 8
+	sub esp, 12
  
 	; -- EXIT --
 	mov eax, 1
@@ -37,7 +35,6 @@ _start:
 	int 0x80
 
 print:
-	pushad
 	mov ebp, esp
 
 	mov eax, 4
@@ -64,10 +61,9 @@ print:
 	mov edx, 1
 	int 0x80
 
-	popad
 	ret
 
-; [ebp+12] -> string
+; [ebp+8] -> string
 ; al -> char
 ; Returns 1 if string contains specified char
 find:
@@ -75,7 +71,7 @@ find:
 	mov ebp, esp
 	push esi
  
-	mov esi, [ebp+12]
+	mov esi, [ebp+8]
 .cycle:
 	cmp [esi], byte 0
 	je .not_found
@@ -96,38 +92,54 @@ find:
  
 ; [ebp+16] -> plaintext
 ; [ebp+12] -> place for encrypted str
-; [ebp+8] -> key
 encrypt:
 	push ebp
 	mov ebp, esp
 	sub esp, 4
-	push esi
-	push edi
-	push ecx
-	push eax
 
-	mov ecx, [ebp+8]
-	mov edi, [ebp+12]
-	mov esi, [ebp+16]
+	mov edi, [ebp+8]
+	mov esi, [ebp+12]
  
 	; HERE MUST BE ENCRYPTION PROCCESS
 	; if char in abc/ABC => encrypt by key
 .cycle:
 	lodsb
-	push abc
+	push ABC_LOWER
 	mov [ebp-4], eax
 	call find
 	test eax, eax
-	jnz .encrypt
+	jnz .encrypt_lower
 
 	mov eax, [ebp-4]
-	push ABC
+	push ABC_UPPER
 	mov [ebp-4], eax
 	call find
 	test eax, eax
 	jz .skip
-.encrypt: ; SPLIT INTO ENCRYPT_UPPER AND ENCRYPT_LOWERT
-	mov eax. [ebp-4]
+.encrypt_upper:
+	mov eax, [ebp-4]
+	; eax = 'A' + (eax - 'A' + key) % 26
+	sub eax, 'A'
+	add eax, [key]
+	xor edx, edx
+	mov ecx, 26
+	div ecx
+	mov eax, edx
+	add eax, 'A'
+	stosb
+
+	jmp .skip
+.encrypt_lower:
+	mov eax, [ebp-4]
+	sub eax, 'a'
+	add eax, [key]
+	xor edx, edx
+	mov ecx, 26
+	div ecx
+	mov eax, edx
+	add eax, 'a'
+	stosb
+
 .skip:
 	cmp esi, 0
 	je .exit
@@ -135,48 +147,61 @@ encrypt:
 .exit:
 
 	add esp, 4
-	pop eax
-	pop ecx
-	pop esi
-	pop edi
-	pop ebp
+	pop ebx
 	ret
  
-; [ebp+16] -> ciphertext
-; [ebp+12] -> place for decrypted str
-; [ebp+8] -> key
+; [ebp+12] -> ciphertext
+; [ebp+8] -> place for decrypted str
 decrypt:
 	push ebp
 	mov ebp, esp
 	sub esp, 4
-	push esi
-	push edi
-	push ecx
-	push eax
 
-	mov ecx, [ebp+8]
-	mov edi, [ebp+12]
-	mov esi, [ebp+16]
+	mov edi, [ebp+8]
+	mov esi, [ebp+12]
  
-	; HERE MUST BE DECRYPTION PROCCESS
-	; if char in abc/ABC => decrypt by key
+	; HERE MUST BE ENCRYPTION PROCCESS
+	; if char in abc/ABC => encrypt by key
 .cycle:
 	lodsb
-	push abc
+	push ABC_LOWER
 	mov [ebp-4], eax
 	call find
 	test eax, eax
-	jnz .encrypt
+	jnz .decrypt_lower
 
 	mov eax, [ebp-4]
-	push ABC
+	push ABC_UPPER
 	mov [ebp-4], eax
 	call find
 	test eax, eax
 	jz .skip
-.decrypt:
-	mov eax. [ebp-4]
-	
+.decrypt_upper:
+	mov eax, [ebp-4]
+	; eax = 'A' + (26 + eax - 'A' - key) % 26  
+	sub eax, 'A'
+	add eax, 26
+	sub eax, [key]
+	xor edx, edx
+	mov ecx, 26
+	div ecx
+	mov eax, edx
+	add eax, 'A'
+	stosb
+
+	jmp .skip
+.decrypt_lower:
+	mov eax, [ebp-4]
+	sub eax, 'a'
+	sub eax, [key]
+	add eax, 26
+	xor edx, edx
+	mov ecx, 26
+	div ecx
+	mov eax, edx
+	add eax, 'a'
+	stosb
+
 .skip:
 	cmp esi, 0
 	je .exit
@@ -184,9 +209,5 @@ decrypt:
 .exit:
 
 	add esp, 4
-	pop eax
-	pop ecx
-	pop esi
-	pop edi
 	pop ebp
 	ret
