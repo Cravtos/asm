@@ -1,5 +1,5 @@
 section .data
-	arr db '321'
+	arr db 'kak3je6z43bal0:'
 	len equ $-arr
 	endl db 0xA
 section .text
