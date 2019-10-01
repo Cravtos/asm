@@ -1,10 +1,8 @@
 section .data
-	ABC_LOWER db 'abcdefghijklmnopqrstuvwxyz', 0
-	ABC_UPPER db 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 0
-	plain_text db "Hello, world!", 0
+	plain_text db "helloworden", 0x00
 	PLAIN_TEXT_LEN equ ($ - plain_text)
 	endl db 0xA
-	key dd 3
+	key dd 0x3
  
 section .bss
 	cipher_text resb PLAIN_TEXT_LEN
@@ -16,86 +14,87 @@ _start:
 	push plain_text
 	push cipher_text
 	call encrypt
-	sub esp, 8
+	sub esp, 0x8
  
 	push cipher_text
 	push decrypted_text
 	call decrypt
-	sub esp, 8
+	sub esp, 0x8
  
 	push cipher_text
 	push decrypted_text
 	push PLAIN_TEXT_LEN
 	call print
-	sub esp, 12
+	sub esp, 0x12
  
 	; -- EXIT --
-	mov eax, 1
+	mov eax, 0x1
 	xor ebx, ebx
 	int 0x80
 
 print:
+	push ebp
 	mov ebp, esp
 
-	mov eax, 4
-	mov ebx, 1
+	mov eax, 0x4
+	mov ebx, 0x1
 	mov ecx, [ebp+12]
 	mov edx, [ebp+8]
 	int 0x80
 
-	mov eax, 4
-	mov ebx, 1
+	mov eax, 0x4
+	mov ebx, 0x1
 	mov ecx, endl
-	mov edx, 1
+	mov edx, 0x1
 	int 0x80
 
-	mov eax, 4
-	mov ebx, 1
+	mov eax, 0x4
+	mov ebx, 0x1
 	mov ecx, [ebp+16]
 	mov edx, [ebp+8]
 	int 0x80
 
-	mov eax, 4
-	mov ebx, 1
+	mov eax, 0x4
+	mov ebx, 0x1
 	mov ecx, endl
-	mov edx, 1
+	mov edx, 0x1
 	int 0x80
 
+	pop ebp
 	ret
 
-; [ebp+8] -> string
 ; al -> char
-; Returns 1 if string contains specified char
-find:
+detect_case:
 	push ebp
 	mov ebp, esp
-	push esi
- 
-	mov esi, [ebp+8]
-.cycle:
-	cmp [esi], byte 0
-	je .not_found
-	cmp al, [esi]
-	je .found
-	inc esi
-	jmp .cycle
- 
-.found:
-	mov eax, 1
+
+	cmp al, 'A'
+	jb .not_a_letter
+	cmp al, 'z'
+	ja .exit
+	cmp al, 'Z'
+	jbe .upper
+	cmp al, 'a'
+	jae .lower
+	
+.lower:
+	mov eax, 0x1
 	jmp .exit
-.not_found:
+.upper:
+	mov eax, 0x2
+	jmp .exit
+.not_a_letter:
 	xor eax, eax
 .exit:
-	pop esi
 	pop ebp
 	ret
  
-; [ebp+16] -> plaintext
-; [ebp+12] -> place for encrypted str
+; [ebp+12] -> plaintext
+; [ebp+8] -> place for encrypted str
 encrypt:
 	push ebp
 	mov ebp, esp
-	sub esp, 4
+	sub esp, 0x4
 
 	mov edi, [ebp+8]
 	mov esi, [ebp+12]
@@ -103,19 +102,16 @@ encrypt:
 	; HERE MUST BE ENCRYPTION PROCCESS
 	; if char in abc/ABC => encrypt by key
 .cycle:
+	cmp [esi], byte 0x00
+	je .exit
 	lodsb
-	push ABC_LOWER
 	mov [ebp-4], eax
-	call find
+	call detect_case
 	test eax, eax
-	jnz .encrypt_lower
+	jz .not_a_letter
+	cmp eax, 1
+	je .encrypt_lower
 
-	mov eax, [ebp-4]
-	push ABC_UPPER
-	mov [ebp-4], eax
-	call find
-	test eax, eax
-	jz .skip
 .encrypt_upper:
 	mov eax, [ebp-4]
 	; eax = 'A' + (eax - 'A' + key) % 26
@@ -126,9 +122,8 @@ encrypt:
 	div ecx
 	mov eax, edx
 	add eax, 'A'
-	stosb
-
 	jmp .skip
+
 .encrypt_lower:
 	mov eax, [ebp-4]
 	sub eax, 'a'
@@ -138,15 +133,15 @@ encrypt:
 	div ecx
 	mov eax, edx
 	add eax, 'a'
-	stosb
+	jmp .skip
 
+.not_a_letter:
+	mov eax, [ebp-4]
 .skip:
-	cmp esi, 0
-	je .exit
+	stosb
 	jmp .cycle
 .exit:
-
-	add esp, 4
+	add esp, 0x4
 	pop ebx
 	ret
  
@@ -155,7 +150,7 @@ encrypt:
 decrypt:
 	push ebp
 	mov ebp, esp
-	sub esp, 4
+	sub esp, 0x4
 
 	mov edi, [ebp+8]
 	mov esi, [ebp+12]
@@ -163,19 +158,16 @@ decrypt:
 	; HERE MUST BE ENCRYPTION PROCCESS
 	; if char in abc/ABC => encrypt by key
 .cycle:
+	cmp [esi], byte 0x00
+	je .exit
 	lodsb
-	push ABC_LOWER
 	mov [ebp-4], eax
-	call find
+	call detect_case
 	test eax, eax
-	jnz .decrypt_lower
+	jz .not_a_letter
+	cmp eax, 0x1
+	je .decrypt_lower
 
-	mov eax, [ebp-4]
-	push ABC_UPPER
-	mov [ebp-4], eax
-	call find
-	test eax, eax
-	jz .skip
 .decrypt_upper:
 	mov eax, [ebp-4]
 	; eax = 'A' + (26 + eax - 'A' - key) % 26  
@@ -187,7 +179,6 @@ decrypt:
 	div ecx
 	mov eax, edx
 	add eax, 'A'
-	stosb
 
 	jmp .skip
 .decrypt_lower:
@@ -200,14 +191,14 @@ decrypt:
 	div ecx
 	mov eax, edx
 	add eax, 'a'
-	stosb
+	jmp .skip
 
+.not_a_letter:
+	mov eax, [ebp-4]
 .skip:
-	cmp esi, 0
-	je .exit
+	stosb
 	jmp .cycle
 .exit:
-
-	add esp, 4
+	add esp, 0x4
 	pop ebp
 	ret
