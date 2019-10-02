@@ -1,69 +1,88 @@
+; Prints all rotations of a string
+
 section .data
 	plain_text db "helloworden", 0x00
-	PLAIN_TEXT_LEN equ ($ - plain_text)
+	plain_text_len equ ($ - plain_text)
 	endl db 0xA
-	key dd 0x3
  
 section .bss
-	cipher_text resb PLAIN_TEXT_LEN
-	decrypted_text resb PLAIN_TEXT_LEN
+	rotated_text resb plain_text_len
   
 section .text
 	global _start
 _start:
+
+	mov ecx, 26		; alphabet power
+
+.rot26:
+
+	push dword ecx
 	push plain_text
-	push cipher_text
-	call encrypt
-	sub esp, 0x8
- 
-	push cipher_text
-	push decrypted_text
-	call decrypt
-	sub esp, 0x8
- 
-	push cipher_text
-	push decrypted_text
-	push PLAIN_TEXT_LEN
-	call print
+	push rotated_text
+	call rot
 	sub esp, 0x12
  
-	; -- EXIT --
-	mov eax, 0x1
-	xor ebx, ebx
-	int 0x80
+	push rotated_text
+	push plain_text_len
+	call print
+	sub esp, 0x8
 
-print:
+	loop .rot26
+
+	mov eax, 0x1	;
+	xor ebx, ebx	; terminate
+	int 0x80		;
+	
+ 
+; arg_2 -- rotation
+; arg_1 -- plaintext
+; arg_0 -- place for rotated
+rot:
 	push ebp
 	mov ebp, esp
+	sub esp, 0x4		; used for saving char
 
-	mov eax, 0x4
-	mov ebx, 0x1
-	mov ecx, [ebp+12]
-	mov edx, [ebp+8]
-	int 0x80
+	pushad
 
-	mov eax, 0x4
-	mov ebx, 0x1
-	mov ecx, endl
-	mov edx, 0x1
-	int 0x80
+	mov edi, [ebp+8]	; rotated
+	mov esi, [ebp+12]	; plain
+ 
+.cycle:
+	cmp [esi], byte 0x0
+	je .exit
 
-	mov eax, 0x4
-	mov ebx, 0x1
-	mov ecx, [ebp+16]
-	mov edx, [ebp+8]
-	int 0x80
+	lodsb
 
-	mov eax, 0x4
-	mov ebx, 0x1
-	mov ecx, endl
-	mov edx, 0x1
-	int 0x80
+	call detect_case	; EBX -> 'a' (lower) | 'A' (upper) | '0' (not a letter)
 
-	pop ebp
+	cmp ebx, '0'
+	jz .skip
+
+.shift:
+	; eax = 'A' + (eax - 'A' + key) % 26
+	sub eax, ebx
+	add eax, [ebp+16]
+	xor edx, edx	;
+	mov ecx, 26		; getting
+	div ecx			; remainder
+	mov eax, edx	;
+	add eax, ebx
+	
+.skip:
+	stosb
+	jmp .cycle
+.exit:
+	popad
+
+	add esp, 0x4
+	pop ebx
 	ret
 
-; al -> char
+; AL -> char
+; Returns case indicator in EBX
+; 'A' for upper
+; 'a' for lower
+; '0' for not-a-letter
 detect_case:
 	push ebp
 	mov ebp, esp
@@ -78,127 +97,39 @@ detect_case:
 	jae .lower
 	
 .lower:
-	mov eax, 0x1
+	mov ebx, 'a'
 	jmp .exit
 .upper:
-	mov eax, 0x2
+	mov ebx, 'A'
 	jmp .exit
 .not_a_letter:
-	xor eax, eax
+	mov ebx, '0'
 .exit:
 	pop ebp
 	ret
- 
-; [ebp+12] -> plaintext
-; [ebp+8] -> place for encrypted str
-encrypt:
+
+
+; arg_1 -- str
+; arg_0 -- len
+print:
 	push ebp
 	mov ebp, esp
-	sub esp, 0x4
 
-	mov edi, [ebp+8]
-	mov esi, [ebp+12]
- 
-	; HERE MUST BE ENCRYPTION PROCCESS
-	; if char in abc/ABC => encrypt by key
-.cycle:
-	cmp [esi], byte 0x00
-	je .exit
-	lodsb
-	mov [ebp-4], eax
-	call detect_case
-	test eax, eax
-	jz .not_a_letter
-	cmp eax, 1
-	je .encrypt_lower
+	pushad
 
-.encrypt_upper:
-	mov eax, [ebp-4]
-	; eax = 'A' + (eax - 'A' + key) % 26
-	sub eax, 'A'
-	add eax, [key]
-	xor edx, edx
-	mov ecx, 26
-	div ecx
-	mov eax, edx
-	add eax, 'A'
-	jmp .skip
+	mov eax, 0x4
+	mov ebx, 0x1
+	mov ecx, [ebp+12]
+	mov edx, [ebp+8]
+	int 0x80
 
-.encrypt_lower:
-	mov eax, [ebp-4]
-	sub eax, 'a'
-	add eax, [key]
-	xor edx, edx
-	mov ecx, 26
-	div ecx
-	mov eax, edx
-	add eax, 'a'
-	jmp .skip
+	mov eax, 0x4
+	mov ebx, 0x1
+	mov ecx, endl
+	mov edx, 0x1
+	int 0x80
 
-.not_a_letter:
-	mov eax, [ebp-4]
-.skip:
-	stosb
-	jmp .cycle
-.exit:
-	add esp, 0x4
-	pop ebx
-	ret
- 
-; [ebp+12] -> ciphertext
-; [ebp+8] -> place for decrypted str
-decrypt:
-	push ebp
-	mov ebp, esp
-	sub esp, 0x4
+	popad
 
-	mov edi, [ebp+8]
-	mov esi, [ebp+12]
- 
-	; HERE MUST BE ENCRYPTION PROCCESS
-	; if char in abc/ABC => encrypt by key
-.cycle:
-	cmp [esi], byte 0x00
-	je .exit
-	lodsb
-	mov [ebp-4], eax
-	call detect_case
-	test eax, eax
-	jz .not_a_letter
-	cmp eax, 0x1
-	je .decrypt_lower
-
-.decrypt_upper:
-	mov eax, [ebp-4]
-	; eax = 'A' + (26 + eax - 'A' - key) % 26  
-	sub eax, 'A'
-	add eax, 26
-	sub eax, [key]
-	xor edx, edx
-	mov ecx, 26
-	div ecx
-	mov eax, edx
-	add eax, 'A'
-
-	jmp .skip
-.decrypt_lower:
-	mov eax, [ebp-4]
-	sub eax, 'a'
-	sub eax, [key]
-	add eax, 26
-	xor edx, edx
-	mov ecx, 26
-	div ecx
-	mov eax, edx
-	add eax, 'a'
-	jmp .skip
-
-.not_a_letter:
-	mov eax, [ebp-4]
-.skip:
-	stosb
-	jmp .cycle
-.exit:
-	add esp, 0x4
 	pop ebp
 	ret
