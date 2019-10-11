@@ -27,10 +27,12 @@
 %define EOF 0x0
 
 %define ABC_POWER 26
-%define BUFSIZE 200
+%define BUFSIZE 100
 
 
 section .data
+	of_msg db 'Overflow.', 0xA
+	of_msg_len equ ($ - of_msg)
 	endl db 0xA  ; '\n'
 	plain_text_len dd 0
 
@@ -43,65 +45,56 @@ section .text
 _start:
 
 	.read_cycle:
-		mov eax, SYS_READ
-		mov ebx, STDIN
-		mov ecx, plain_text
-		mov edx, BUFSIZE
-		int SYS_CALL
+		pcall read, plain_text, BUFSIZE
 
-		dec eax		; remove newline symbol
+		test eax, eax
+		jz .exit
+
 		mov [plain_text_len], eax
 
 		mov ecx, ABC_POWER
 		.rot26:
 
-			; push dword [plain_text_len]
-			; push ecx 	;(key)
-			; push plain_text
-			; push rotated_text
-			; call rot
-			; add esp, 0x12
-
-			pcall rot, rotated_text, plain_text, ecx, [plain_text_len]
-
-			; push rotated_text
-			; push plain_text_len
-			; call print
-			; add esp, 0x8
-	
-			pcall print, plain_text_len, rotated_text
+			pcall rot, rotated_text, plain_text, [plain_text_len], ecx ; ecx -- key
+			pcall print, rotated_text, [plain_text_len]
+			pcall print, endl, 0x1
 
 		loop .rot26
 
-		xor eax, eax
-		mov edi, plain_text
-		mov ecx, BUFSIZE
-		rep stosb 				; Clears buffer
-		mov edi, rotated_text	; But does it need to?
-		mov ecx, BUFSIZE
-		rep stosb
-
 	loop .read_cycle
-	
+
 	.exit:
 		mov eax, SYS_EXIT	;
 		xor ebx, ebx		; terminate
 		int SYS_CALL		;
-		
- 
-; arg4 -- len
-; arg3 -- rotation
+
+; arg1 -- exit_code	
+err_overflow:
+	push ebp
+	mov ebp, esp
+	%define exit_code arg(1)
+
+	pcall print, of_msg, of_msg_len
+	mov eax, SYS_EXIT
+	mov ebx, [exit_code]
+	int SYS_CALL
+
+	%undef exit_code
+	pop ebp
+	ret
+
+; arg4 -- rotation
+; arg3 -- len
 ; arg2 -- plaintext
 ; arg1 -- place for rotated text
 rot:
 	%define dst arg(1)
 	%define src arg(2)
-	%define rotation arg(3)
-	%define len arg(4)
+	%define len arg(3)
+	%define rotation arg(4)
 
 	push ebp
 	mov ebp, esp
-	sub esp, 0x4		; used for saving char
 
 	pushad
 
@@ -112,12 +105,9 @@ rot:
 	.cycle:
 		push ecx
 		lodsb
-
-		; push eax
-		; call detect_case	; EBX -> 'a' (lower) | 'A' (upper) | '0' (not a letter)
-		; add esp, 0x4
-
-		pcall detect_case, eax
+		
+		; EBX -> 'a' (lower) | 'A' (upper) | '0' (not a letter)
+		pcall detect_case, eax ; eax -- char from plaintext (after lodsb)
 
 		cmp ebx, '0'
 		jz .skip
@@ -146,7 +136,6 @@ rot:
 		
 		popad
 
-		add esp, 0x4
 		pop ebx
 		ret
 
@@ -192,8 +181,9 @@ print:
 	push ebp
 	mov ebp, esp
 
-	%define str arg(2)
-	%define len arg(1)
+
+	%define str arg(1)
+	%define len arg(2)
 
 	push eax
 	push ebx
@@ -214,5 +204,53 @@ print:
 	pop ebx
 	pop eax
 
+	pop ebp
+	ret
+
+; arg2 -- buf_len
+; arg1 -- buf
+read:
+	push ebp
+	mov ebp, esp
+	sub esp, 0x4
+
+	push edi
+
+	%define buf arg(1) 
+	; arg(1) -> buf -> '..'
+	%define buf_len arg(2)
+	%define place_left local(1)
+	
+	mov [place_left], dword BUFSIZE
+	mov edi, [buf]
+
+	.read_cycle:
+		mov eax, SYS_READ
+		mov ebx, STDIN
+		mov ecx, [buf]
+		mov edx, [place_left]
+		int SYS_CALL
+
+		test eax, eax
+		jz .break
+
+		add [buf], eax
+		sub [place_left], eax
+		cmp [place_left], dword 0x0
+		jle .err_overflow
+	jmp .read_cycle
+	.err_overflow:
+		pcall err_overflow, 0x1
+
+	.break:
+	mov eax, [buf]
+	sub eax, edi	; ((buf+readed) - buf)
+	
+	%undef buf 
+	%undef buf_len 
+	%undef place_left
+
+	pop edi
+	add esp, 0x4
 	pop ebp
 	ret
