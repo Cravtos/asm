@@ -32,11 +32,11 @@
 
 section .data
 	endl db 0xA  ; '\n'
+	plain_text_len dd 0
 
 section .bss
 	rotated_text resb BUFSIZE
 	plain_text resb BUFSIZE
-	plain_text_len resd 1
   
 section .text
 	global _start
@@ -49,10 +49,7 @@ _start:
 		mov edx, BUFSIZE
 		int SYS_CALL
 
-		cmp eax, 1		; only \n char
-		je .exit
-
-		dec eax
+		dec eax		; remove newline symbol
 		mov [plain_text_len], eax
 
 		mov ecx, ABC_POWER
@@ -71,7 +68,7 @@ _start:
 			; push plain_text_len
 			; call print
 			; add esp, 0x8
-
+	
 			pcall print, plain_text_len, rotated_text
 
 		loop .rot26
@@ -80,7 +77,7 @@ _start:
 		mov edi, plain_text
 		mov ecx, BUFSIZE
 		rep stosb 				; Clears buffer
-		mov edi, rotated_text
+		mov edi, rotated_text	; But does it need to?
 		mov ecx, BUFSIZE
 		rep stosb
 
@@ -138,7 +135,7 @@ rot:
 		.skip:
 			stosb
 			pop ecx
-			loop .cycle
+	loop .cycle
 	
 	.exit:
 
