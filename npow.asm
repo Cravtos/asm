@@ -15,7 +15,7 @@
 
 %define EOF 0x0
 %define ENDL 0xA ; '\n'
-%define BUFSIZE 8
+%define BUFSIZE 32
 
 section .data
     ofmsg db 'Overflow.', 10
@@ -25,7 +25,7 @@ section .data
 
 section .bss
     n resd 1
-    buff resb BUFSIZE
+    buf resb BUFSIZE
 
 section .text
     global _start
@@ -173,18 +173,33 @@ getchar:
 
     mov eax, SYS_READ
     mov ebx, STDIN
-    mov ecx, buff
+    mov ecx, buf
     mov edx, 0x1    ; read one char
     int SYS_CALL
 
     popad
 
-    mov al, [buff]
+    mov al, [buf]
 
     pop ebp
     ret
 
-
+; Using C:
+;   
+;   assert(n > 0);
+;   int tmp = 0;
+;   int len = 0;
+;   void print_int(int n) {
+;       for (len = 0; n > 0; ++i) {
+;           tmp = n % 10;
+;           buf[i] = tmp;
+;           n /= 10;
+;       }
+;       while (len != 0) {
+;           putchar((buf[len] + '0'));
+;           --len;
+;       }
+;   }
 ; arg1 -- number (int) to be printed
 print_int:
     push ebp
