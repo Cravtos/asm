@@ -14,12 +14,13 @@
 %define STDIN 0x0
 
 %define EOF 0x0
+%define ENDL 0xA ; '\n'
 %define BUFSIZE 8
 
 section .data
     ofmsg db 'Overflow.', 10
     ofmsglen equ ($ - ofmsg)
-    bimsg db 'Bad input (NaN)', 10
+    bimsg db 'Bad input (NaN).', 10
     bimsglen equ ($ - bimsg)
 
 section .bss
@@ -30,12 +31,14 @@ section .text
     global _start
 
 _start:
+
     call get_int    ; Reads int into eax
     mov [n], eax
     
     push dword [n]  ;
     call npow       ; n ** n -> EAX
     add esp, 4      ;
+    
     mov [n], eax    ; Result
 
     push n
@@ -91,41 +94,53 @@ loop .mult_cycle
 ; EAX <- int
 get_int:
     push ebp
-    mov ebp, esi
+    mov ebp, esp
     sub esp, 4
 
     push ebx
+    push ecx
+    mov ecx, 10 ; base
+    xor ebx, ebx
     %define result [local(1)]
 
-    mov result, 0
-    .loop;
+    mov result, dword 0
+    .loop:
         call getchar
-        ; isdigit() ? nop : break
+        
+        ; al == digit?
+        cmp al, '0'
+        jb .break
+        cmp al, '9'
+        ja .break
 
         mov bl, al
         
         mov eax, result
-        mul 10
+        mul ecx
         jo overflow
         
         sub bl, '0'
         
-        add eax, bl
+        add eax, ebx
         jo overflow
         mov result, eax
     jmp .loop
     .break:
 
-    cmp al, EOF 
+    cmp al, byte EOF 
     je .ok
-    cmp al, '\n'
+    cmp al, byte ENDL
     je .ok
-    ; 
+    ; but what if first char were eof?
     jmp bad_input
+    .ok:
 
     mov eax, result
     %define result
+    pop ecx
     pop ebx
+
+    mov esp, ebp
     pop ebp
     ret
 
@@ -154,14 +169,32 @@ getchar:
     push ebp
     mov ebp, esp
 
+    pushad
+
     mov eax, SYS_READ
     mov ebx, STDIN
     mov ecx, buff
-    mov edx, 1
+    mov edx, 0x1    ; read one char
     int SYS_CALL
+
+    popad
 
     mov al, [buff]
 
+    pop ebp
+    ret
+
+
+; arg1 -- number (int) to be printed
+print_int:
+    push ebp
+    mov ebp, esp
+    %define number [arg(1)]
+
+    mov eax, number
+    
+    
+    %undef number
     pop ebp
     ret
 

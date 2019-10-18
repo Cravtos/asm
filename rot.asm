@@ -27,8 +27,9 @@
 %define EOF 0x0
 
 %define ABC_POWER 26
-%define BUFSIZE 100
+%define BUFSIZE 10240
 
+%define KEY 3 ; shift
 
 section .data
 	of_msg db 'Overflow.', 0xA
@@ -43,29 +44,20 @@ section .bss
 section .text
 	global _start
 _start:
-	.read_cycle:
-		pcall read, plain_text, BUFSIZE
+	pcall read, plain_text, BUFSIZE
 
-		test eax, eax
-		jz .exit
+	test eax, eax
+	jz .exit
 
-		mov [plain_text_len], eax
-
-		mov ecx, ABC_POWER
-		.rot26:
-
-			pcall rot, rotated_text, plain_text, [plain_text_len], ecx ; ecx -- key
-			pcall print, rotated_text, [plain_text_len]
-			pcall print, endl, 0x1
-
-		loop .rot26
-
-	loop .read_cycle
-
+	mov [plain_text_len], eax
+	pcall rot, rotated_text, plain_text, [plain_text_len], KEY ; ecx -- key
+	pcall print, rotated_text, [plain_text_len]
+	; pcall print, endl, 0x1
+	
 	.exit:
-		mov eax, SYS_EXIT	;
-		xor ebx, ebx		; terminate
-		int SYS_CALL		;
+	mov eax, SYS_EXIT	;
+	xor ebx, ebx		; terminate
+	int SYS_CALL		;
 
 ; arg1 -- exit_code	
 err_overflow:
