@@ -43,7 +43,6 @@ section .bss
 section .text
 	global _start
 _start:
-
 	.read_cycle:
 		pcall read, plain_text, BUFSIZE
 
