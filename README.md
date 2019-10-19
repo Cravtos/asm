@@ -1,1 +1,1 @@
-Programs written to learn *nasm*.
+Programs written to learn NASM.
