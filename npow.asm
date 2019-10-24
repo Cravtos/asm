@@ -15,6 +15,7 @@
 
 %define EOF 0x0
 %define ENDL 0xA ; '\n'
+
 %define BUFSIZE 32
 
 section .data
@@ -32,16 +33,16 @@ section .text
 
 _start:
 
-    call get_int    ; Reads int into eax
+    call get_int    ; Reads int into eax ONLY USGN INT
     mov [n], eax
     
-    push dword [n]  ;
-    call npow       ; n ** n -> EAX
-    add esp, 4      ;
+    ; push dword [n]  ;
+    ; call npow       ; n ** n -> EAX
+    ; add esp, 4      ;
     
-    mov [n], eax    ; Result
+    ; mov [n], eax    ; Result
 
-    push n
+    push dword [n]
     call print_int
     add esp, 4
     
@@ -59,38 +60,21 @@ npow:
     
     mov ecx, ebx         ; n times
     dec ecx
-.mult_cycle:
-    push ecx
-    dec ecx
-    .sum_cycle:
-        add eax, ebx
-        jo overflow
-    loop .sum_cycle
-
-    mov ebx, eax
-
-    pop ecx
-loop .mult_cycle
+    .mult_cycle:
+        push ecx
+        dec ecx
+        .sum_cycle:
+            add eax, ebx
+            jo overflow
+        loop .sum_cycle
+        mov ebx, eax
+        pop ecx
+    loop .mult_cycle
     
     %undef pn
     pop ebp
     ret
-
-;   Using C:
-;
-;   // c = getchar();
-;   // if (c == EOF) error();
-;   // if (c == '-' || c == '+')
-;   res = 0;
-;   while (c = getchar() == is_digit(c)) {
-;       res *= 10;
-;       check_overflow();
-;       res += c - '0';
-;       check_overflow();
-;   }
-;   if (c != EOF || c != '\n') bad_input();
-;   return res
-;
+    
 ; EAX <- int
 get_int:
     push ebp
@@ -131,7 +115,7 @@ get_int:
     je .ok
     cmp al, byte ENDL
     je .ok
-    ; but what if first char were eof?
+    ; but what if first char was eof? catch it in a pow func as 0 ** 0
     jmp bad_input
     .ok:
 
@@ -184,32 +168,73 @@ getchar:
     pop ebp
     ret
 
-; Using C:
-;   
-;   assert(n > 0);
-;   int tmp = 0;
-;   int len = 0;
-;   void print_int(int n) {
-;       for (len = 0; n > 0; ++i) {
-;           tmp = n % 10;
-;           buf[i] = tmp;
-;           n /= 10;
-;       }
-;       while (len != 0) {
-;           putchar((buf[len] + '0'));
-;           --len;
-;       }
-;   }
-; arg1 -- number (int) to be printed
+; arg1 -- number
 print_int:
     push ebp
     mov ebp, esp
     %define number [arg(1)]
+    pushad
 
     mov eax, number
+    mov ecx, 10
+    xor esi, esi    ; as len counter
+    .itoc:  ; int to chars
+        cmp eax, 0
+        jle .break
+
+        xor edx, edx
+        div ecx     ; n //= 10;
+        add dl, '0'
+        mov [buf+esi], dl   ; buf[len] = (n % 10);
+
+        inc esi     ; ++len
+    jmp .itoc
+    .break:
     
+    push esi
+    push buf
+    call reverse
+    add esp, 8
+
+    mov eax, SYS_WRITE
+    mov ebx, STDIN
+    mov ecx, buf
+    mov edx, esi
+    int SYS_CALL
     
+    popad
     %undef number
+    pop ebp
+    ret
+
+; arg2 -- string len
+; arg1 -- string
+reverse:
+    push ebp 
+    mov ebp, esp
+
+    %define len [ebp+12]
+    %define string [ebp+8] 
+   
+    mov ecx, len ; len --> ecx
+ 
+    mov esi, string     ; address of first char
+    mov edi, esi
+    add edi, ecx        ; address of last char
+    dec edi             ;
+ 
+    shr ecx, 1
+ 
+    .swap:
+        mov al, [esi]
+        mov bl, [edi]
+        mov [esi], bl
+        mov [edi], al
+        inc esi
+        dec edi
+    loop .swap
+ 
+    mov esp, ebp
     pop ebp
     ret
 
@@ -218,7 +243,13 @@ print_int:
 ; 1 - overflow
 ; 2 - badinput
 exit:
+    push ebp
+    mov ebp, esp
+
     %define exitcode [arg(1)]
     mov eax, SYS_EXIT
     mov ebx, exitcode
     int SYS_CALL
+
+    pop ebp
+    ret
