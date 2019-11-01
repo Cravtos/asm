@@ -4,6 +4,7 @@
 
 ; TODO:
 ;   1) WORKING WITH EAX:EDX 
+;   2) error handling using print
 
 %define arg(n) ebp+(4*n)+4
 %define local(n) ebp-(4*n)
@@ -27,6 +28,10 @@ section .data
     bimsglen equ ($ - bimsg)
     mathmsg db 'Math error (0 ** 0)', 10
     mathmsglen equ ($ - mathmsg)
+    usagemsg db 'Usage: ./pow number power', 0xA,     \
+                '   number - int, power - uint', 0xA, \
+                'Example ./pow 2 3', 0xA
+    usagemsglen equ ($ - usagemsg)
     endl db 0xA ; \n
     minus db '-'
 
@@ -40,19 +45,34 @@ section .text
     global _start
 
 _start:
-    call get_int    ; Reads int into eax ONLY USGN INT
-    mov [n], eax
+    %define argc [arg(0)]
+    %define argv1 [arg(1)]
+    %define argv2 [arg(2)]
+    %define argv3 [arg(3)]
+    push ebp
+    mov ebp, esp
 
-    call get_int
+    cmp argc, dword 3
+    jne usage
+
+    push dword argv2   ; number
+    call stoi    ; Reads int into eax ONLY USGN INT
+    add esp, 4
+    mov [n], eax
+    
+
+    push dword argv3   ; power
+    call stoi
+    add esp, 4
     mov [pow], eax
     
     push dword [pow]
-    push dword [n]  ;
-    call power       ; n ** n -> EAX
-    add esp, 8      ;
+    push dword [n]  
+    call power      
+    add esp, 8      
     
     mov [result], eax    ; Result
-    mov [result+4], edx
+    ;   mov [result+4], edx
 
     push dword [result]
     call print_int
@@ -66,77 +86,34 @@ _start:
     push 0x0
     call exit
 
-
-; arg2 -- pow (unsigned)
-; arg1 -- n (signed)
-power:
-    push ebp
-    mov ebp, esp
-
-    push ebx
-    push ecx
-
-    %define n [arg(1)]
-    %define pow [arg(2)]
-    
-    mov eax, 1
-    mov ebx, n
-    mov ecx, pow
-
-    ; 0 ** 0 check
-    cmp ebx, ecx
-    jne .ok
-    cmp ebx, 0
-    je math_err
-    .ok:
-
-    .mult:  
-        cmp ecx, 0
-        je .exit
-
-        imul ebx
-        jo overflow
-        dec ecx
-    jmp .mult
-
-    .exit:
-    %undef n
-    %undef pow
-
-    pop ecx
-    pop ebx
-
-    pop ebp
-    ret
-    
 ; EAX <- int
-get_int:
+; arg1 -- string
+stoi:
+    %define result [local(1)]
+    %define string [arg(1)]
+
     push ebp
     mov ebp, esp
     sub esp, 4
 
-    push ebx
-    push ecx
-    push edx
-    push esi
-
-
+    mov esi, string
     mov ecx, 10 ; base
     xor ebx, ebx
-    %define result [local(1)]
 
     mov result, dword 0
 
-    mov esi, 1
-    call getchar
+    mov edi, 1
+    mov al, [esi]
+    inc esi
     cmp al, '+'
     je .loop
     cmp al, '-'
     jne .check_input
-    neg esi
+    neg edi
 
     .loop:
-        call getchar
+        mov al, [esi]
+        inc esi
 
         .check_input:
 
@@ -170,20 +147,69 @@ get_int:
     .ok:
 
     mov eax, result
-    cmp esi, -0x1
+    cmp edi, -0x1
     jne .positive
     neg eax
     .positive:
-    %undef result
 
-    pop esi
-    pop edx
-    pop ecx
-    pop ebx
 
     mov esp, ebp
     pop ebp
+    %undef result
+    %undef string 
     ret
+
+usage:
+    push usagemsglen
+    push usagemsg
+    call print
+    add esp, 8
+
+    push 0x2    ; bad input
+    call exit
+
+; arg2 -- pow (unsigned)
+; arg1 -- n (signed)
+power:
+    %define n [arg(1)]
+    %define pow [arg(2)]
+    push ebp
+    mov ebp, esp
+
+    push ebx
+    push ecx
+    
+    mov eax, 1
+    mov ebx, n
+    mov ecx, pow
+
+    ; 0 ** 0 check
+    cmp ebx, ecx
+    jne .ok
+    cmp ebx, 0
+    je math_err
+    .ok:
+
+    .mult:  
+        cmp ecx, 0
+        je .exit
+
+        imul ebx
+        jo overflow
+        dec ecx
+    jmp .mult
+
+    .exit:
+
+    pop ecx
+    pop ebx
+
+    pop ebp
+    %undef n
+    %undef pow
+    ret
+    
+
 
 overflow:
     mov eax, SYS_WRITE
@@ -215,31 +241,11 @@ math_err:
     push 0x3 ; matherr exitcode
     call exit
 
-; AL <- char
-getchar:
-    push ebp
-    mov ebp, esp
-
-    pushad
-
-    mov eax, SYS_READ
-    mov ebx, STDIN
-    mov ecx, buf
-    mov edx, 0x1    ; read one char
-    int SYS_CALL
-
-    popad
-
-    mov al, [buf]
-
-    pop ebp
-    ret
-
 ; arg1 -- signed int
 print_int:
+    %define number [arg(1)]
     push ebp
     mov ebp, esp
-    %define number [arg(1)]
     pushad
 
     mov eax, number
@@ -279,20 +285,20 @@ print_int:
     add esp, 8
     
     popad
-    %undef number
     pop ebp
+    %undef number
     ret
 
 ; arg2 -- string len
 ; arg1 -- string
 reverse:
+    %define len [ebp+12]
+    %define string [ebp+8] 
     push ebp 
     mov ebp, esp
 
     pushad 
 
-    %define len [ebp+12]
-    %define string [ebp+8] 
    
     mov ecx, len ; len --> ecx
     cmp ecx, 2
@@ -317,22 +323,22 @@ reverse:
 
     popad
     
-    %undef len
-    %undef string
 
     mov esp, ebp
     pop ebp
+    %undef len
+    %undef string
     ret
 
 ; arg2 -- str
 ; arg1 -- len
 print:
+	%define str arg(1)
+	%define len arg(2)
 	push ebp
 	mov ebp, esp
 
 
-	%define str arg(1)
-	%define len arg(2)
 
 	push eax
 	push ebx
@@ -345,8 +351,6 @@ print:
 	mov edx, [len]
 	int SYS_CALL
 
-	%undef str
-	%undef len
 
 	pop edx
 	pop ecx
@@ -354,6 +358,8 @@ print:
 	pop eax
 
 	pop ebp
+	%undef str
+	%undef len
 	ret
 
 
@@ -361,11 +367,12 @@ print:
 ; 0 - ok
 ; 1 - overflow
 ; 2 - badinput
+; 3 - matherr
 exit:
+    %define exitcode [arg(1)]
     push ebp
     mov ebp, esp
 
-    %define exitcode [arg(1)]
     mov eax, SYS_EXIT
     mov ebx, exitcode
     int SYS_CALL
