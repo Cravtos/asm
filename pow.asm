@@ -3,10 +3,7 @@
 ;
 
 ; TODO:
-;   1) NEGATIVE NUMBERS (pow imul, print with minus)
-;   2) WORKING WITH EAX:EDX 
-
-; ERROR IN GET_INT (ALWAYS RETURN 0)
+;   1) WORKING WITH EAX:EDX 
 
 %define arg(n) ebp+(4*n)+4
 %define local(n) ebp-(4*n)
@@ -31,6 +28,7 @@ section .data
     mathmsg db 'Math error (0 ** 0)', 10
     mathmsglen equ ($ - mathmsg)
     endl db 0xA ; \n
+    minus db '-'
 
 section .bss
     n resd 1
@@ -96,7 +94,7 @@ power:
         cmp ecx, 0
         je .exit
 
-        mul ebx
+        imul ebx
         jo overflow
         dec ecx
     jmp .mult
@@ -120,6 +118,8 @@ get_int:
     push ebx
     push ecx
     push edx
+    push esi
+
 
     mov ecx, 10 ; base
     xor ebx, ebx
@@ -127,19 +127,18 @@ get_int:
 
     mov result, dword 0
 
-    mov edx, 1
+    mov esi, 1
     call getchar
-    cmp al, '-'
-    jne .not_minus
-    mov edx, -1
-    .not_minus:
     cmp al, '+'
-    jne .after_sign_check
+    je .loop
+    cmp al, '-'
+    jne .check_input
+    neg esi
 
     .loop:
         call getchar
 
-        .after_sign_check:
+        .check_input:
 
         ; al == digit?
         cmp al, '0'
@@ -171,9 +170,13 @@ get_int:
     .ok:
 
     mov eax, result
-    imul edx
+    cmp esi, -0x1
+    jne .positive
+    neg eax
+    .positive:
     %undef result
 
+    pop esi
     pop edx
     pop ecx
     pop ebx
@@ -232,7 +235,7 @@ getchar:
     pop ebp
     ret
 
-; arg1 -- number
+; arg1 -- signed int
 print_int:
     push ebp
     mov ebp, esp
@@ -240,6 +243,16 @@ print_int:
     pushad
 
     mov eax, number
+    cmp eax, 0
+    jnl .positive
+    neg eax
+    push 0x1
+    push minus
+    call print
+    add esp, 8
+    .positive:
+
+
     mov ecx, 10
     xor esi, esi    ; as len counter
     .itoc:  ; int to chars
