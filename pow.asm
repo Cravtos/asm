@@ -2,10 +2,6 @@
 ; Gets (n ** n) w/o using multiplication.
 ;
 
-; TODO:
-;   1) WORKING WITH EAX:EDX 
-;   2) error handling using print
-
 %define arg(n) ebp+(4*n)+4
 %define local(n) ebp-(4*n)
 
@@ -38,7 +34,7 @@ section .data
 section .bss
     n resd 1
     pow resd 1
-    result resd 2   
+    result resd 1
     buf resb BUFSIZE
 
 section .text
@@ -59,7 +55,6 @@ _start:
     call stoi    ; Reads int into eax ONLY USGN INT
     add esp, 4
     mov [n], eax
-    
 
     push dword argv3   ; power
     call stoi
@@ -71,8 +66,7 @@ _start:
     call power      
     add esp, 8      
     
-    mov [result], eax    ; Result
-    ;   mov [result+4], edx
+    mov [result], eax   
 
     push dword [result]
     call print_int
@@ -209,34 +203,29 @@ power:
     %undef pow
     ret
     
-
-
 overflow:
-    mov eax, SYS_WRITE
-    mov ebx, STDOUT
-    mov ecx, ofmsg
-    mov edx, ofmsglen
-    int SYS_CALL
+    push ofmsglen
+    push ofmsg
+    call print
+    add esp, 8
 
     push 0x1 ; overflow exitcode
     call exit
 
 bad_input:
-    mov eax, SYS_WRITE
-    mov ebx, STDOUT
-    mov ecx, bimsg
-    mov edx, bimsglen
-    int SYS_CALL
+    push bimsglen
+    push bimsg
+    call print
+    add esp, 8
 
     push 0x2 ; badinput exitcode
     call exit
 
 math_err:
-    mov eax, SYS_WRITE
-    mov ebx, STDOUT
-    mov ecx, mathmsg
-    mov edx, mathmsglen
-    int SYS_CALL
+    push mathmsglen
+    push mathmsg
+    call print
+    add esp, 8
 
     push 0x3 ; matherr exitcode
     call exit
@@ -249,13 +238,15 @@ print_int:
     pushad
 
     mov eax, number
-    cmp eax, 0
+    cmp eax, 0      ; is number negative or positive?
     jnl .positive
     neg eax
+
     push 0x1
     push minus
     call print
     add esp, 8
+    
     .positive:
 
 
@@ -297,8 +288,7 @@ reverse:
     push ebp 
     mov ebp, esp
 
-    pushad 
-
+    pushad
    
     mov ecx, len ; len --> ecx
     cmp ecx, 2
@@ -307,9 +297,9 @@ reverse:
     mov esi, string     ; address of first char
     mov edi, esi
     add edi, ecx        ; address of last char
-    dec edi             ;
+    dec edi             ; ^
  
-    shr ecx, 1
+    shr ecx, 1          ; len /= 2
     
     .swap:
         mov al, [esi]
@@ -333,29 +323,20 @@ reverse:
 ; arg2 -- str
 ; arg1 -- len
 print:
-	%define str arg(1)
-	%define len arg(2)
+	%define str [arg(1)]
+	%define len [arg(2)]
 	push ebp
 	mov ebp, esp
 
-
-
-	push eax
-	push ebx
-	push ecx
-	push edx
+    pushad
 
 	mov eax, SYS_WRITE
 	mov ebx, STDOUT
-	mov ecx, [str]
-	mov edx, [len]
+	mov ecx, str
+	mov edx, len
 	int SYS_CALL
 
-
-	pop edx
-	pop ecx
-	pop ebx
-	pop eax
+	popad
 
 	pop ebp
 	%undef str
