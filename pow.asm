@@ -1,5 +1,9 @@
 ;
-; Gets (n ** n) w/o using multiplication.
+; Usage: ./pow number power
+; 
+; number - int, power - uint
+; Example ./pow 2 3
+; 
 ;
 
 %define arg(n) ebp+(4*n)+4
@@ -45,6 +49,7 @@ _start:
     %define argv1 [arg(1)]
     %define argv2 [arg(2)]
     %define argv3 [arg(3)]
+
     push ebp
     mov ebp, esp
 
@@ -52,7 +57,7 @@ _start:
     jne usage
 
     push dword argv2   ; number
-    call stoi    ; Reads int into eax ONLY USGN INT
+    call stoi
     add esp, 4
     mov [n], eax
 
@@ -81,7 +86,7 @@ _start:
     call exit
 
 ; EAX <- int
-; arg1 -- string
+; arg1 -- string containing uint/int
 stoi:
     %define result [local(1)]
     %define string [arg(1)]
@@ -153,14 +158,6 @@ stoi:
     %undef string 
     ret
 
-usage:
-    push usagemsglen
-    push usagemsg
-    call print
-    add esp, 8
-
-    push 0x2    ; bad input
-    call exit
 
 ; arg2 -- pow (unsigned)
 ; arg1 -- n (signed)
@@ -203,36 +200,11 @@ power:
     %undef pow
     ret
     
-overflow:
-    push ofmsglen
-    push ofmsg
-    call print
-    add esp, 8
-
-    push 0x1 ; overflow exitcode
-    call exit
-
-bad_input:
-    push bimsglen
-    push bimsg
-    call print
-    add esp, 8
-
-    push 0x2 ; badinput exitcode
-    call exit
-
-math_err:
-    push mathmsglen
-    push mathmsg
-    call print
-    add esp, 8
-
-    push 0x3 ; matherr exitcode
-    call exit
 
 ; arg1 -- signed int
 print_int:
     %define number [arg(1)]
+
     push ebp
     mov ebp, esp
     pushad
@@ -243,7 +215,7 @@ print_int:
     neg eax
 
     push 0x1
-    push minus
+    push minus  ; print '-' if negative
     call print
     add esp, 8
     
@@ -252,11 +224,12 @@ print_int:
 
     mov ecx, 10
     xor esi, esi    ; as len counter
-    .itoc:  ; int to chars
+    .itoc:  ; ints to symbols
         xor edx, edx
         div ecx     ; n //= 10;
         add dl, '0'
-        mov [buf+esi], dl   ; buf[len] = (n % 10);
+        mov [buf+esi], dl   ; buf[len] = (n % 10); 
+                            ; buf contains reversed number 
 
         inc esi     ; ++len
 
@@ -267,7 +240,7 @@ print_int:
     
     push esi
     push buf
-    call reverse
+    call reverse ; since buf contains reversed number
     add esp, 8
 
     push esi
@@ -285,6 +258,7 @@ print_int:
 reverse:
     %define len [ebp+12]
     %define string [ebp+8] 
+
     push ebp 
     mov ebp, esp
 
@@ -312,7 +286,6 @@ reverse:
     .less2:
 
     popad
-    
 
     mov esp, ebp
     pop ebp
@@ -325,6 +298,7 @@ reverse:
 print:
 	%define str [arg(1)]
 	%define len [arg(2)]
+
 	push ebp
 	mov ebp, esp
 
@@ -343,6 +317,43 @@ print:
 	%undef len
 	ret
 
+; error handlers
+
+overflow:
+    push ofmsglen
+    push ofmsg
+    call print
+    add esp, 8
+
+    push 0x1 ; overflow exitcode
+    call exit
+
+usage:
+    push usagemsglen
+    push usagemsg
+    call print
+    add esp, 8
+
+    push 0x2    ; bad input
+    call exit
+
+bad_input:
+    push bimsglen
+    push bimsg
+    call print
+    add esp, 8
+
+    push 0x2 ; badinput exitcode
+    call exit
+
+math_err:
+    push mathmsglen
+    push mathmsg
+    call print
+    add esp, 8
+
+    push 0x3 ; matherr exitcode
+    call exit
 
 ; arg1 -- exitcode
 ; 0 - ok
