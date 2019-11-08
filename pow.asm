@@ -4,7 +4,7 @@
 ; number - int, power - uint
 ; Example ./pow 2 3
 ; 
-;
+
 
 %define arg(n) ebp+(4*n)+4
 %define local(n) ebp-(4*n)
@@ -18,69 +18,67 @@
 %define STDIN 0x0
 
 %define EOF 0x0
-
 %define BUFSIZE 32
 
 section .data
     ofmsg db 'Overflow', 10
     ofmsglen equ ($ - ofmsg)
+
     bimsg db 'Bad input (NaN)', 10
     bimsglen equ ($ - bimsg)
+    
     mathmsg db 'Math error (0 ** 0)', 10
     mathmsglen equ ($ - mathmsg)
+    
     usagemsg db 'Usage: ./pow number power', 0xA,     \
                 '   number - int, power - uint', 0xA, \
                 'Example ./pow 2 3', 0xA
     usagemsglen equ ($ - usagemsg)
-    endl db 0xA ; \n
-    minus db '-'
-
-section .bss
-    n resd 1
-    pow resd 1
-    result resd 1
-    buf resb BUFSIZE
 
 section .text
     global _start
 
 _start:
     %define argc [arg(0)]
-    %define argv1 [arg(1)]
-    %define argv2 [arg(2)]
-    %define argv3 [arg(3)]
+    %define argv0 [arg(1)]
+    %define argv1 [arg(2)]
+    %define argv2 [arg(3)]
+
+    %define n [local(1)]
+    %define pow [local(2)]
+    %define result [local(3)]
 
     push ebp
     mov ebp, esp
+    sub esp, 12
 
     cmp argc, dword 3
     jne usage
 
-    push dword argv2   ; number
+    push dword argv1   ; number
     call stoi
     add esp, 4
-    mov [n], eax
+    mov n, eax
 
-    push dword argv3   ; power
+    push dword argv2   ; power
     call stoi
     add esp, 4
-    mov [pow], eax
+    mov pow, eax
     
-    push dword [pow]
-    push dword [n]  
+    push dword pow
+    push dword n  
     call power      
     add esp, 8      
     
-    mov [result], eax   
+    mov result, eax   
 
-    push dword [result]
+    push dword result
     call print_int
     add esp, 4
 
-    push dword 0x1
-    push endl
-    call print
-    add esp, 8
+    push dword 0xA     ; '\n'
+    call putchar
+    add esp, 4
     
     push 0x0
     call exit
@@ -96,7 +94,7 @@ stoi:
     sub esp, 4
 
     mov esi, string
-    mov ecx, 10 ; base
+    mov ecx, 10          ; base
     xor ebx, ebx
 
     mov result, dword 0
@@ -138,7 +136,7 @@ stoi:
 
     cmp al, byte EOF
     je .ok
-    cmp al, [endl]
+    cmp al, 0xA         ; '\n'
     je .ok
     cmp al, ' '
     je .ok
@@ -204,93 +202,56 @@ power:
 ; arg1 -- signed int
 print_int:
     %define number [arg(1)]
+    %define buffer local(1)
 
     push ebp
     mov ebp, esp
+    sub esp, BUFSIZE
+
     pushad
 
     mov eax, number
-    cmp eax, 0      ; is number negative or positive?
+    cmp eax, 0             ; is number negative or positive?
     jnl .positive
     neg eax
 
-    push 0x1
-    push minus  ; print '-' if negative
-    call print
-    add esp, 8
-    
+    push dword '-'
+    call putchar
+    add esp, 4
+
     .positive:
 
-
+    xor esi, esi           ; as len counter
     mov ecx, 10
-    xor esi, esi    ; as len counter
-    .itoc:  ; ints to symbols
+    .itoc:                 ; ints to symbols
         xor edx, edx
-        div ecx     ; n //= 10;
+        div ecx            ; n //= 10;
         add dl, '0'
-        mov [buf+esi], dl   ; buf[len] = (n % 10); 
-                            ; buf contains reversed number 
+        lea edi, [buffer+BUFSIZE-1]
+        sub edi, esi
+        mov [edi], dl
 
-        inc esi     ; ++len
+        inc esi            ; ++len
 
         cmp eax, 0
         jle .break
     jmp .itoc
     .break:
+
+    lea edi, [buffer+BUFSIZE]
+    sub edi, esi
     
     push esi
-    push buf
-    call reverse ; since buf contains reversed number
-    add esp, 8
-
-    push esi
-    push buf
+    push edi
     call print
     add esp, 8
     
     popad
-    pop ebp
-    %undef number
-    ret
-
-; arg2 -- string len
-; arg1 -- string
-reverse:
-    %define len [ebp+12]
-    %define string [ebp+8] 
-
-    push ebp 
-    mov ebp, esp
-
-    pushad
-   
-    mov ecx, len ; len --> ecx
-    cmp ecx, 2
-    jl .less2
-
-    mov esi, string     ; address of first char
-    mov edi, esi
-    add edi, ecx        ; address of last char
-    dec edi             ; ^
- 
-    shr ecx, 1          ; len /= 2
-    
-    .swap:
-        mov al, [esi]
-        mov bl, [edi]
-        mov [esi], bl
-        mov [edi], al
-        inc esi
-        dec edi
-    loop .swap
-    .less2:
-
-    popad
 
     mov esp, ebp
     pop ebp
-    %undef len
-    %undef string
+    
+    %undef number
     ret
 
 ; arg2 -- str
@@ -317,6 +278,26 @@ print:
 	%undef len
 	ret
 
+; arg1 -- char
+putchar:
+    %define char [arg(1)]
+	push ebp
+	mov ebp, esp
+
+    pushad
+
+	mov eax, SYS_WRITE
+	mov ebx, STDOUT
+	lea ecx, char
+	mov edx, 0x1
+	int SYS_CALL
+
+	popad
+
+	pop ebp
+	%undef char
+	ret
+
 ; error handlers
 
 overflow:
@@ -325,7 +306,7 @@ overflow:
     call print
     add esp, 8
 
-    push 0x1 ; overflow exitcode
+    push 0x1        ; overflow exitcode
     call exit
 
 usage:
@@ -334,7 +315,7 @@ usage:
     call print
     add esp, 8
 
-    push 0x2    ; bad input
+    push 0x2        ; badinput exitcode
     call exit
 
 bad_input:
@@ -343,7 +324,7 @@ bad_input:
     call print
     add esp, 8
 
-    push 0x2 ; badinput exitcode
+    push 0x2        ; badinput exitcode
     call exit
 
 math_err:
@@ -352,7 +333,7 @@ math_err:
     call print
     add esp, 8
 
-    push 0x3 ; matherr exitcode
+    push 0x3        ; matherr exitcode
     call exit
 
 ; arg1 -- exitcode
