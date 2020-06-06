@@ -4,6 +4,7 @@
 %define MATH_ERR 0x1
 %define OVERFLOW_ERR 0x2
 %define CALLBACK_ERR 0x3
+%define BAD_ARGS 0x4
 
 global power
 section .text
@@ -31,13 +32,6 @@ power:
     mov ecx, pow
     mov edi, callback
 
-    ; 0 ** 0 check
-    cmp ebx, ecx
-    jne .ok
-    cmp ebx, 0
-    je .math_err
-    .ok:
-
     .mult:  
         cmp ecx, 0
         je .exit
@@ -62,16 +56,12 @@ power:
     mov eax, CALLBACK_ERR
     jmp .return
 
-.math_err:
-    mov eax, MATH_ERR
-    jmp .return
-    
 .overflow:
     mov eax, OVERFLOW_ERR
     jmp .return
 
-.return:
     ; Give registers its saved values and return
+.return:
     pop edi
     pop ecx
     pop ebx
