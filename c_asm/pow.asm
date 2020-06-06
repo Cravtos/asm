@@ -1,10 +1,9 @@
 %define arg(n) ebp+(4*n)+4
 %define local(n) ebp-(4*n)
 
-%define MATH_ERR 0x1
-%define OVERFLOW_ERR 0x2
-%define CALLBACK_ERR 0x3
-%define BAD_ARGS 0x4
+section .data
+extern err_overflow
+extern err_callback
 
 global power
 section .text
@@ -53,11 +52,11 @@ power:
 
     ; Handle errors
 .callback_err:
-    mov eax, CALLBACK_ERR
+    mov eax, [err_callback]
     jmp .return
 
 .overflow:
-    mov eax, OVERFLOW_ERR
+    mov eax, [err_overflow]
     jmp .return
 
     ; Give registers its saved values and return

@@ -4,11 +4,11 @@
 #include <errno.h>
 #include <string.h>
 
-// Error codes that power can return.
-#define MATH_ERR 0x1
-#define OVERFLOW 0x2
-#define CALLBACK_ERR 0x3
-#define BAD_ARGS 0x4
+// Error codes
+int err_math = 0x1;
+int err_overflow = 0x2;
+int err_callback = 0x3;
+int err_bad_args = 0x4;
 
 const char* usage = "Usage: ./pow number power\n" \
                     "number - int32, power - uint32\n" \
@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
     if (argc != 3)
     {
         puts(usage);
-        return BAD_ARGS;
+        return err_bad_args;
     }
 
     // Convert arguments from strings to numbers
@@ -38,32 +38,32 @@ int main(int argc, char* argv[])
     if (errno != 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
-        return BAD_ARGS;
+        return err_bad_args;
     }
 
     uint32_t pow = (uint32_t) strtoul(argv[2], NULL, 10);
     if (errno != 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
-        return BAD_ARGS;
+        return err_bad_args;
     }
 
     // Check if result is defined
     if (num == 0 && pow == 0)
     {
         fprintf(stderr, "Undefined: 0 power 0!\n");
-        return MATH_ERR;
+        return err_math;
     }
 
     // Call power function
     int32_t ret_code = power(num, pow, process_results);
 
     // Check if it worked correctly
-    if (ret_code == OVERFLOW)
+    if (ret_code == err_overflow)
     {
         fprintf(stderr, "Overflow!\n");
     }
-    else if (ret_code == CALLBACK_ERR)
+    else if (ret_code == err_callback)
     {
         fprintf(stderr, "Failed to process results!\n");
     }
