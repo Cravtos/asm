@@ -22,8 +22,8 @@ section .rodata
 	msg_bi db 'Bad input', 0x0A
 	msg_bi_len equ ($ - msg_bi)
 
-	usage_msg db 'Usage: ./task1 3-digit-number', 0x0A, \
-				'Example ./task1 153', 0x0A
+	usage_msg db 'Usage: ./task2 3-digit-number', 0x0A, \
+				'Example ./task2 153', 0x0A
 	usage_msg_len equ ($ - usage_msg)
 
 	contain_msg db 'Given number contains digit 5', 0x0A
@@ -226,7 +226,7 @@ stoi:
 		sub bl, '0'
 		
 		add eax, ebx
-		jo overflow
+		jc overflow
 		mov result, eax
 	jmp .loop
 	.break:

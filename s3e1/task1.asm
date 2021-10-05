@@ -235,7 +235,7 @@ stoi:
 		sub bl, '0'
 		
 		add eax, ebx
-		jo overflow
+		jc overflow
 		mov result, eax
    jmp .loop
    .break:
