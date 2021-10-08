@@ -12,7 +12,14 @@ task3:
 	nasm -f elf task3.asm -o task3.o -g
 	ld -m elf_i386 task3.o -o task3
 
+
+task4:
+	nasm -f elf task4.asm -o task4.o -g
+	ld -m elf_i386 task4.o -o task4
+
 clean:
 	rm -f task1.o task1
 	rm -f task2.o task2
 	rm -f task3.o task3
+	rm -f task4.o task4
+
