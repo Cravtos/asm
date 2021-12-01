@@ -1,8 +1,14 @@
 **Programs written to learn NASM**
 ===
 
-To compile:  
+## **WARNING: not properly tested bad code, do not copy**  
+  
+
+
+To compile and run:  
+
 ```bash
-nasm -f elf program.asm -o program.o
-ld -m elf_i386 program.o -o program
+nasm -f elf foo.asm -o foo.o
+ld -m elf_i386 foo.o -o foo
+./foo
 ```
