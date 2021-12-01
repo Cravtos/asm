@@ -1,4 +1,4 @@
-all: task1 task2 task3 task4 task5
+all: task1 task2 task3 task4 task5 task6
 
 task1: clean_task1
 	nasm -f elf task1.asm -o task1.o -g
@@ -17,10 +17,14 @@ task4: clean_task4
 	ld -m elf_i386 task4.o -o task4
 
 task5: clean_task5
-	nasm -f elf task5.asm -o task5.o -g
-	ld -m elf_i386 task5.o -o task5
+	@nasm -f elf task5.asm -o task5.o -g
+	@ld -m elf_i386 task5.o -o task5
 
-clean: clean_task1 clean_task2 clean_task3 clean_task4 clean_task5
+task6: clean_task6
+	@nasm -f elf task6.asm -o task6.o -g
+	@ld -m elf_i386 task6.o -o task6
+
+clean: clean_task1 clean_task2 clean_task3 clean_task4 clean_task5 clean_task6
 
 clean_task1:
 	rm -f task1.o task1
@@ -37,8 +41,11 @@ clean_task4:
 clean_task5:
 	rm -f task5.o task5
 
+clean_task6:
+	rm -f task6.o task6
+
 test_task5: task5
-	-./task5 0 0 # should be math error
+	-./task5 0 0 || true # should be math error 
 	./task5 0 1
 	./task5 1 1
 	./task5 -1 1
@@ -49,14 +56,14 @@ test_task5: task5
 	./task5 2 0
 	./task5 2 2
 	./task5 2 9
-	-./task5 2 -1 # should say power need to be positive
+	-./task5 2 -1 || true # should say power need to be positive
 	./task5 -2 1
 	./task5 -2 2
 	./task5 -2 9
 	./task5 -5 4
-	-./task5 1 4294967296 # should say overflow
+	-./task5 1 4294967296 || true # should say overflow
 	./task5 -2147483648 1
-	-./task5 -2147483649 1 # should say overflow
-	-./task5 2147483648 1 # should say overflow
+	-./task5 -2147483649 1 || true # should say overflow
+	-./task5 2147483648 1 || true # should say overflow
 	./task5 2147483647 1
 	./task5 1 4294967295
