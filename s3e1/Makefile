@@ -1,19 +1,20 @@
-all: task1 task2 task3 task4 task5 task6
+all: task1 task2 task3 task4 task5 task6 task7
 
 task1: clean_task1
-	nasm -f elf task1.asm -o task1.o -g
-	ld -m elf_i386 task1.o -o task1
+	@nasm -f elf task1.asm -o task1.o -g
+	@ld -m elf_i386 task1.o -o task1
 
 task2: clean_task2
-	nasm -f elf task2.asm -o task2.o -g
-	ld -m elf_i386 task2.o -o task2
+	@nasm -f elf task2.asm -o task2.o -g
+	@ld -m elf_i386 task2.o -o task2
 
 task3: clean_task3
-	nasm -f elf task3.asm -o task3.o -g
-	ld -m elf_i386 task3.o -o task3
+	@nasm -f elf task3.asm -o task3.o -g
+	@ld -m elf_i386 task3.o -o task3
 
 task4: clean_task4
-	nasm -f elf task4.asm -o task4.o -g
+	@nasm -f elf task4.asm -o task4.o -g
+	@
 	ld -m elf_i386 task4.o -o task4
 
 task5: clean_task5
@@ -24,7 +25,11 @@ task6: clean_task6
 	@nasm -f elf task6.asm -o task6.o -g
 	@ld -m elf_i386 task6.o -o task6
 
-clean: clean_task1 clean_task2 clean_task3 clean_task4 clean_task5 clean_task6
+task7: clean_task7
+	@nasm -f elf task7.asm -o task7.o -g
+	@ld -m elf_i386 task7.o -o task7
+
+clean: clean_task1 clean_task2 clean_task3 clean_task4 clean_task5 clean_task6 clean_task7
 
 clean_task1:
 	rm -f task1.o task1
@@ -43,6 +48,9 @@ clean_task5:
 
 clean_task6:
 	rm -f task6.o task6
+
+clean_task7:
+	rm -f task7.o task7
 
 test_task5: task5
 	-./task5 0 0 || true # should be math error 
