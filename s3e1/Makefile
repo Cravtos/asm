@@ -32,7 +32,11 @@ task8: clean_task8
 	@nasm -f elf task8.asm -o task8.o -g
 	@ld -m elf_i386 task8.o -o task8
 
-clean: clean_task1 clean_task2 clean_task3 clean_task4 clean_task5 clean_task6 clean_task7 clean_task8
+task9: clean_task9
+	@nasm -f elf task9.asm -o task9.o -g
+	@ld -m elf_i386 task9.o -o task9
+
+clean: clean_task1 clean_task2 clean_task3 clean_task4 clean_task5 clean_task6 clean_task7 clean_task8 clean_task9
 
 clean_task1:
 	rm -f task1.o task1
@@ -57,6 +61,9 @@ clean_task7:
 
 clean_task8:
 	rm -f task8.o task8
+
+clean_task9:
+	rm -f task9.o task9
 
 test_task5: task5
 	-./task5 0 0 || true # should be math error 
