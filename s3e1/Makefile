@@ -1,4 +1,4 @@
-all: task1 task2 task3 task4 task5 task6 task7 task8
+all: task1 task2 task3 task4 task5 task6 task7 task8 task9 task10
 
 task1: clean_task1
 	@nasm -f elf task1.asm -o task1.o -g
@@ -36,7 +36,11 @@ task9: clean_task9
 	@nasm -f elf task9.asm -o task9.o -g
 	@ld -m elf_i386 task9.o -o task9
 
-clean: clean_task1 clean_task2 clean_task3 clean_task4 clean_task5 clean_task6 clean_task7 clean_task8 clean_task9
+task10: clean_task10
+	@nasm -f elf task10.asm -o task10.o -g
+	@ld -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 -o task10 -lc task10.o
+
+clean: clean_task1 clean_task2 clean_task3 clean_task4 clean_task5 clean_task6 clean_task7 clean_task8 clean_task9 clean_task10
 
 clean_task1:
 	rm -f task1.o task1
@@ -64,6 +68,9 @@ clean_task8:
 
 clean_task9:
 	rm -f task9.o task9
+
+clean_task10:
+	rm -f task10.o task10
 
 test_task5: task5
 	-./task5 0 0 || true # should be math error 
