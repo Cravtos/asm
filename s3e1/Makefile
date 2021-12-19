@@ -1,97 +1,65 @@
 all: task1 task2 task3 task4 task5 task6 task7 task8 task9 task10
 
-task1: clean_task1
-	@nasm -f elf task1.asm -o task1.o -g
-	@ld -m elf_i386 task1.o -o task1
+clean:
+	rm -f *.o
+	ls | grep -P "^task\d+$$" | xargs -d"\n" -r rm 
 
-task2: clean_task2
-	@nasm -f elf task2.asm -o task2.o -g
-	@ld -m elf_i386 task2.o -o task2
+task1: task1.o
+	ld -m elf_i386 task1.o -o task1
 
-task3: clean_task3
-	@nasm -f elf task3.asm -o task3.o -g
-	@ld -m elf_i386 task3.o -o task3
+task1.o:
+	nasm -f elf task1.asm -o task1.o -g
 
-task4: clean_task4
-	@nasm -f elf task4.asm -o task4.o -g
-	@ld -m elf_i386 task4.o -o task4
+task2: task2.o
+	ld -m elf_i386 task2.o -o task2
 
-task5: clean_task5
-	@nasm -f elf task5.asm -o task5.o -g
-	@ld -m elf_i386 task5.o -o task5
+task2.o:
+	nasm -f elf task2.asm -o task2.o -g
 
-task6: clean_task6
-	@nasm -f elf task6.asm -o task6.o -g
-	@ld -m elf_i386 task6.o -o task6
+task3: task3.o
+	ld -m elf_i386 task3.o -o task3
 
-task7: clean_task7
-	@nasm -f elf task7.asm -o task7.o -g
-	@ld -m elf_i386 task7.o -o task7
+task3.o:
+	nasm -f elf task3.asm -o task3.o -g
 
-task8: clean_task8
-	@nasm -f elf task8.asm -o task8.o -g
-	@ld -m elf_i386 task8.o -o task8
+task4: task4.o
+	ld -m elf_i386 task4.o -o task4
 
-task9: clean_task9
-	@nasm -f elf task9.asm -o task9.o -g
-	@ld -m elf_i386 task9.o -o task9
+task4.o:
+	nasm -f elf task4.asm -o task4.o -g
 
-task10: clean_task10
-	@nasm -f elf task10.asm -o task10.o -g
-	@ld -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 -o task10 -lc task10.o
+task5: task5.o
+	ld -m elf_i386 task5.o -o task5
 
-clean: clean_task1 clean_task2 clean_task3 clean_task4 clean_task5 clean_task6 clean_task7 clean_task8 clean_task9 clean_task10
+task5.o:
+	nasm -f elf task5.asm -o task5.o -g
 
-clean_task1:
-	rm -f task1.o task1
+task6: task6.o
+	ld -m elf_i386 task6.o -o task6
 
-clean_task2:
-	rm -f task2.o task2
+task6.o:
+	nasm -f elf task6.asm -o task6.o -g
 
-clean_task3:
-	rm -f task3.o task3
+task7: task7.o
+	ld -m elf_i386 task7.o -o task7
 
-clean_task4:
-	rm -f task4.o task4
+task7.o:
+	nasm -f elf task7.asm -o task7.o -g
 
-clean_task5:
-	rm -f task5.o task5
+task8: task8.o
+	ld -m elf_i386 task8.o -o task8
 
-clean_task6:
-	rm -f task6.o task6
+task8.o:
+	nasm -f elf task8.asm -o task8.o -g
 
-clean_task7:
-	rm -f task7.o task7
+task9: task9.o
+	ld -m elf_i386 task9.o -o task9
 
-clean_task8:
-	rm -f task8.o task8
+task9.o:
+	nasm -f elf task9.asm -o task9.o -g
 
-clean_task9:
-	rm -f task9.o task9
+task10: task10.o
+	ld -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 -o task10 -lc task10.o
 
-clean_task10:
-	rm -f task10.o task10
-
-test_task5: task5
-	-./task5 0 0 || true # should be math error 
-	./task5 0 1
-	./task5 1 1
-	./task5 -1 1
-	./task5 -1 2
-	./task5 1 2
-	./task5 1 0
-	./task5 2 1
-	./task5 2 0
-	./task5 2 2
-	./task5 2 9
-	-./task5 2 -1 || true # should say power need to be positive
-	./task5 -2 1
-	./task5 -2 2
-	./task5 -2 9
-	./task5 -5 4
-	-./task5 1 4294967296 || true # should say overflow
-	./task5 -2147483648 1
-	-./task5 -2147483649 1 || true # should say overflow
-	-./task5 2147483648 1 || true # should say overflow
-	./task5 2147483647 1
-	./task5 1 4294967295
+task10.o:
+	nasm -f elf task10.asm -o task10.o -g
