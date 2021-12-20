@@ -1,4 +1,4 @@
-all: task1 task2 task3 task4 task5 task6 task7 task8 task9 task10
+all: task1 task2 task3 task4 task5 task6 task7 task8 task9 task10 task11
 
 clean:
 	rm -f *.o
@@ -63,3 +63,9 @@ task10: task10.o
 
 task10.o:
 	nasm -f elf task10.asm -o task10.o -g
+
+task11: task11.o
+	ld -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 -o task11 -lc task11.o
+
+task11.o:
+	nasm -f elf task11.asm -o task11.o -g
