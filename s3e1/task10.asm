@@ -2,20 +2,6 @@
 ; Построить таблицу значений функции y = (2.434*x^2)/(3-x^(1/3))
 ; при заданных значениях аргумента x в отрезке [1,2] и шагом h=0.05
 
-%define arg(n) ebp+(4*n)+4
-%define local(n) ebp-(4*n)
-
-%define SYS_CALL 0x80
-%define SYS_WRITE 0x4
-%define SYS_READ 0x3
-%define SYS_EXIT 0x1
-
-%define STDOUT 0x1
-%define STDIN 0x0
-
-%define EOF 0x0
-%define BUFSIZE 32
-
 section .data
     tablerowfmt db 'x = %lf, y(x) = %lf', 0x0a, 0
 
@@ -29,6 +15,7 @@ section .data
 
 section .text
 	global _start
+
     extern printf
     extern exit
 
@@ -40,8 +27,10 @@ _start:
 
     .calc:
         ; calculate y(x). value is returned in st0
+        ; here x is passed through stack, 
+        ; but it also could be passed as is in st0
         sub esp, 8
-        fst qword [esp] ; here x is passed through stack, but it also could be passed as is in st0
+        fst qword [esp] 
         call calc
         add esp, 8
 
@@ -59,7 +48,7 @@ _start:
         fld qword [step]
         faddp
 
-        ; compare current value with number two and set CPU flags
+        ; compare current value with number 2 and set CPU flags
         fld qword [twoe]
         fcomip
         fwait
